@@ -7,5 +7,6 @@ members = [
     "crates/encoder",
     "crates/capture",
     "crates/audio",
+    "crates/input",
 ]
 resolver = "2"
