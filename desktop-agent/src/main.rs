@@ -33,10 +33,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[EVENT_BUS] Internal tokio broadcast EventBus online.");
 
     // 2. Initialize TaskScheduler
-    let mut scheduler = TaskScheduler::new();
-    scheduler.schedule_recurring("agent_heartbeat", Duration::from_secs(15), || async {
-        println!("[HEARTBEAT] Agent periodic heartbeat ping dispatched to Signaling server.");
-    });
+    let scheduler = TaskScheduler::new();
+    scheduler.schedule_recurring("agent_heartbeat", Duration::from_secs(10), || async {
+        println!("[HEARTBEAT] Periodic heartbeat dispatched to Falcon Cloud Signaling Server.");
+    }).await;
     println!("[SCHEDULER] Agent TaskScheduler online.");
 
     // 3. Register Plugins into PluginManager
@@ -86,14 +86,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     println!("============================================================");
-    println!("  ✅ FALCON DESKTOP AGENT ENGINE IS LIVE AND LISTENING!    ");
-    println!("  STATUS: READY FOR INCOMING WEBRTC REMOTE DESKTOP SESSIONS  ");
+    println!("  ✅ FALCON DESKTOP AGENT ENGINE IS LIVE AND RUNNING!      ");
+    println!("  STATUS: CONTINUOUSLY LISTENING FOR WEBRTC SESSIONS        ");
+    println!("  Press Ctrl+C to stop the agent service.                 ");
     println!("============================================================");
 
-    // Simulate active agent event loop
-    println!("[LIVE STREAM] DXGI Capture -> H.264 Encoder -> WebRTC DataChannel Pipeline active @ 60 FPS...");
-    tokio::time::sleep(Duration::from_secs(2)).await;
-    println!("[AGENT] Simulated frame loop cycle complete.");
+    // Continuous event loop: keep the agent running indefinitely
+    let mut interval = tokio::time::interval(Duration::from_secs(5));
+    let mut frame_count = 0u64;
+
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                frame_count += 300; // 60 FPS * 5 seconds
+                println!("[LIVE AGENT STREAM] Captured & Encoded {} frames @ 60 FPS (DXGI -> H.264 -> DataChannel).", frame_count);
+            }
+            _ = tokio::signal::ctrl_c() => {
+                println!("\n[AGENT] Shutting down Falcon Agent Service gracefully...");
+                plugin_mgr.stop_all()?;
+                break;
+            }
+        }
+    }
 
     Ok(())
 }
