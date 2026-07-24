@@ -1,12 +1,8 @@
 @echo off
 title Falcon Native Desktop Client
 echo ============================================================
-echo   🦅 LAUNCHING FALCON NATIVE DESKTOP APPLICATION...        
+echo   🦅 LAUNCHING FALCON NATIVE RUST DESKTOP EXECUTABLE...    
 echo ============================================================
 
-cd /d "%~dp0desktop-agent"
-start "" cmd /c "cargo run"
-
-cd /d "%~dp0desktop-app"
-npx electron .
+start "" "%~dp0desktop-agent\target\debug\falcon-desktop-agent.exe"
 
