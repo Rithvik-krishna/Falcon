@@ -4,5 +4,7 @@ members = [
     "crates/storage",
     "crates/telemetry",
     "crates/network",
+    "crates/encoder",
+    "crates/capture",
 ]
 resolver = "2"
