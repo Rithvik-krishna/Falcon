@@ -9,5 +9,6 @@ members = [
     "crates/audio",
     "crates/input",
     "crates/webrtc",
+    "crates/clipboard",
 ]
 resolver = "2"
