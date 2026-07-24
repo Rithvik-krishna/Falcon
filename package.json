@@ -1,0 +1,15 @@
+{
+  "name": "falcon-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Falcon Secure Remote Desktop Platform Monorepo",
+  "scripts": {
+    "build": "pnpm --filter @falcon/sdk build && pnpm --filter @falcon/backend build",
+    "test": "pnpm --filter @falcon/sdk test && pnpm --filter @falcon/backend test",
+    "dev:backend": "pnpm --filter @falcon/backend dev",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

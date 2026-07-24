@@ -1,0 +1,13 @@
+[package]
+name = "falcon-sdk"
+version = "1.0.0"
+edition = "2021"
+authors = ["Rithvik Krishna D K"]
+description = "Falcon Core SDK for Rust"
+
+[dependencies]
+byteorder = "1.5.0"
+ring = "0.17.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"

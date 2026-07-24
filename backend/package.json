@@ -1,0 +1,32 @@
+{
+  "name": "@falcon/backend",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "prisma generate && tsc",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "prisma:migrate": "prisma migrate dev",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@falcon/sdk": "file:../packages/sdk",
+    "@prisma/client": "^5.14.0",
+    "argon2": "^0.40.1",
+    "fastify": "^4.27.0",
+    "fastify-plugin": "^4.5.1",
+    "ioredis": "^5.4.1",
+    "pino": "^9.1.0",
+    "ws": "^8.17.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "@types/ws": "^8.5.10",
+    "pino-pretty": "^11.1.0",
+    "prisma": "^5.14.0",
+    "tsx": "^4.10.5",
+    "typescript": "^5.4.5"
+  }
+}

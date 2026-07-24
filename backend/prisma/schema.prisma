@@ -1,0 +1,198 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  BUSY
+  UNREGISTERED
+}
+
+enum SessionStatus {
+  PENDING
+  NEGOTIATING
+  CONNECTED
+  PAUSED
+  DISCONNECTED
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  passwordHash  String          @map("password_hash")
+  fullName      String          @map("full_name")
+  avatarUrl     String?         @map("avatar_url")
+  emailVerified Boolean         @default(false) @map("email_verified")
+  status        UserStatus      @default(ACTIVE)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  deletedAt     DateTime?       @map("deleted_at")
+
+  devices       Device[]
+  sessions      Session[]       @relation("ViewerSessions")
+  refreshTokens RefreshToken[]
+  userSettings  UserSetting?
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Device {
+  id                 String       @id @default(uuid())
+  ownerId            String       @map("owner_id")
+  deviceName         String       @map("device_name")
+  hostname           String
+  platform           String
+  architecture       String
+  osVersion          String       @map("os_version")
+  applicationVersion String       @map("application_version")
+  publicKey          String       @map("public_key")
+  lastSeen           DateTime     @default(now()) @map("last_seen")
+  status             DeviceStatus @default(OFFLINE)
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  owner              User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sessions           Session[]         @relation("HostDeviceSessions")
+  deviceHeartbeats   DeviceHeartbeat[]
+
+  @@index([ownerId])
+  @@index([lastSeen])
+  @@index([status])
+  @@map("devices")
+}
+
+model Session {
+  id             String        @id @default(uuid())
+  viewerId       String        @map("viewer_id")
+  deviceId       String        @map("device_id")
+  status         SessionStatus @default(PENDING)
+  startedAt      DateTime      @default(now()) @map("started_at")
+  endedAt        DateTime?     @map("ended_at")
+  duration       Int?          @default(0)
+  ipAddress      String?       @map("ip_address")
+  country        String?
+  city           String?
+  connectionType String?       @map("connection_type")
+  averageLatency Float?        @map("average_latency")
+  averageBitrate Float?        @map("average_bitrate")
+
+  viewer         User           @relation("ViewerSessions", fields: [viewerId], references: [id], onDelete: Cascade)
+  device         Device         @relation("HostDeviceSessions", fields: [deviceId], references: [id], onDelete: Cascade)
+  events         SessionEvent[]
+
+  @@index([deviceId])
+  @@index([viewerId])
+  @@index([status])
+  @@map("sessions")
+}
+
+model SessionEvent {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id")
+  event     String
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("session_events")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model DeviceHeartbeat {
+  id        String   @id @default(uuid())
+  deviceId  String   @map("device_id")
+  cpuUsage  Float    @map("cpu_usage")
+  ramUsage  Float    @map("ram_usage")
+  diskUsage Float    @map("disk_usage")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@map("device_heartbeats")
+}
+
+model UserSetting {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  theme         String   @default("dark")
+  autoConnect   Boolean  @default(false) @map("auto_connect")
+  clipboardSync Boolean  @default(true) @map("clipboard_sync")
+  audioStream   Boolean  @default(true) @map("audio_stream")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String
+  ipAddress String?  @map("ip_address")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model FileTransfer {
+  id            String   @id @default(uuid())
+  sessionId     String   @map("session_id")
+  fileName      String   @map("file_name")
+  fileSizeBytes BigInt   @map("file_size_bytes")
+  status        String   @default("PENDING")
+  checksumSha256 String? @map("checksum_sha256")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@map("file_transfers")
+}

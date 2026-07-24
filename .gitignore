@@ -1,0 +1,30 @@
+# Node / JS
+node_modules/
+dist/
+build/
+.pnpm-debug.log*
+.env
+.env.local
+
+# Rust / Cargo
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Flutter / Dart
+mobile-app/.dart_tool/
+mobile-app/.fvm/
+mobile-app/.pub-cache/
+mobile-app/build/
+mobile-app/.pub/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs & Traces
+*.log
+logs/
