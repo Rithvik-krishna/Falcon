@@ -1,0 +1,16 @@
+[package]
+name = "falcon-agent-storage"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+rusqlite = { version = "0.31", features = ["bundled"] }
+thiserror = "1.0"
+falcon-sdk = { path = "../../../crates/sdk" }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_Security_Cryptography",
+    "Win32_System_Memory",
+    "Win32_Foundation"
+] }
