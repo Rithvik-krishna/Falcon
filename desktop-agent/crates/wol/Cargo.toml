@@ -1,0 +1,15 @@
+[package]
+name = "falcon-agent-wol"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "1.0"
+falcon-sdk = { path = "../../../crates/sdk" }
+falcon-agent-core = { path = "../core" }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_System_Shutdown",
+    "Win32_Foundation"
+] }

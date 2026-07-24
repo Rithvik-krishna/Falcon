@@ -11,5 +11,6 @@ members = [
     "crates/webrtc",
     "crates/clipboard",
     "crates/file_transfer",
+    "crates/wol",
 ]
 resolver = "2"
