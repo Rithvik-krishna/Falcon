@@ -4,4 +4,7 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 falcon-sdk = { path = "../../../crates/sdk" }
+falcon-agent-core = { path = "../core" }
