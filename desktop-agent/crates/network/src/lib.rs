@@ -1,3 +1,3 @@
-pub fn init_network() {
-    println!("Network initialized");
-}
+pub mod benchmark;
+
+pub use benchmark::*;
