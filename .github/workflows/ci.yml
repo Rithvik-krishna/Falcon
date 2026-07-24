@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Cache pnpm / cargo dependencies
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -24,6 +24,7 @@ jobs:
             ~/.cargo/git
             target
             node_modules
+            backend/node_modules
           key: ${{ runner.os }}-falcon-v1-${{ hashFiles('**/Cargo.lock', '**/package.json') }}
 
   stage-2-lint:
@@ -41,6 +42,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies & Prisma Client
+        run: |
+          npm install
+          cd backend && npm install && npx prisma generate
       - name: TypeScript Check
         run: cd backend && npx tsc --noEmit
 
@@ -50,6 +59,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies & Prisma Client
+        run: |
+          npm install
+          cd backend && npm install && npx prisma generate
       - name: Run Backend Unit Tests
         run: cd backend && npm test
 
@@ -59,6 +76,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: |
+          npm install
+          cd backend && npm install
       - name: Prisma Validate
         run: cd backend && npx prisma validate
 
@@ -68,6 +93,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies & Prisma Client
+        run: |
+          npm install
+          cd backend && npm install && npx prisma generate
       - name: Fastify Integration Tests
         run: cd backend && npm test
 
