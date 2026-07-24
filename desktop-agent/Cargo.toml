@@ -1,5 +1,11 @@
+[package]
+name = "falcon-desktop-agent"
+version = "1.0.0"
+edition = "2021"
+
 [workspace]
 members = [
+    ".",
     "crates/core",
     "crates/storage",
     "crates/telemetry",
@@ -14,3 +20,20 @@ members = [
     "crates/wol",
 ]
 resolver = "2"
+
+[dependencies]
+tokio = { version = "1.38", features = ["full"] }
+thiserror = "1.0"
+falcon-sdk = { path = "../crates/sdk" }
+falcon-agent-core = { path = "crates/core" }
+falcon-agent-storage = { path = "crates/storage" }
+falcon-agent-encoder = { path = "crates/encoder" }
+falcon-agent-capture = { path = "crates/capture" }
+falcon-agent-audio = { path = "crates/audio" }
+falcon-agent-input = { path = "crates/input" }
+falcon-agent-webrtc = { path = "crates/webrtc" }
+falcon-agent-clipboard = { path = "crates/clipboard" }
+falcon-agent-file-transfer = { path = "crates/file_transfer" }
+falcon-agent-wol = { path = "crates/wol" }
+falcon-agent-telemetry = { path = "crates/telemetry" }
+falcon-agent-network = { path = "crates/network" }

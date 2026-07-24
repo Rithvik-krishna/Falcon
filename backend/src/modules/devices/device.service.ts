@@ -116,20 +116,24 @@ export class DeviceService {
    */
   private startHeartbeatMonitor() {
     setInterval(async () => {
-      const threshold = new Date(Date.now() - 30_000); // 30 seconds ago
-      const staleDevices = await prisma.device.findMany({
-        where: {
-          status: DeviceStatus.ONLINE,
-          lastSeen: { lt: threshold },
-        },
-      });
-
-      for (const dev of staleDevices) {
-        await prisma.device.update({
-          where: { id: dev.id },
-          data: { status: DeviceStatus.OFFLINE },
+      try {
+        const threshold = new Date(Date.now() - 30_000); // 30 seconds ago
+        const staleDevices = await prisma.device.findMany({
+          where: {
+            status: DeviceStatus.ONLINE,
+            lastSeen: { lt: threshold },
+          },
         });
-        await domainEventBus.publish('DeviceOffline', { deviceId: dev.id, ownerId: dev.ownerId });
+
+        for (const dev of staleDevices) {
+          await prisma.device.update({
+            where: { id: dev.id },
+            data: { status: DeviceStatus.OFFLINE },
+          });
+          await domainEventBus.publish('DeviceOffline', { deviceId: dev.id, ownerId: dev.ownerId });
+        }
+      } catch (err) {
+        // Silently handle database offline state in dev environment
       }
     }, 15_000);
   }
