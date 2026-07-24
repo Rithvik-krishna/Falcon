@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   Shield, 
   Copy, 
-  RotateCcw, 
   ArrowRight, 
   FolderDown, 
   Monitor, 
@@ -12,17 +11,14 @@ import {
   Check, 
   X,
   Zap,
-  Cpu,
   Power,
   User,
   KeyRound,
   LogOut,
   Mail,
-  Building,
   Eye,
   EyeOff,
-  CheckCircle2,
-  Sparkles
+  Edit3
 } from 'lucide-react';
 
 export default function App() {
@@ -31,28 +27,27 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState('rithvik@falcon.io');
   const [loginPassword, setLoginPassword] = useState('••••••••••••');
   const [showPassword, setShowPassword] = useState(false);
-  const [userProfile, setUserProfile] = useState({
+  const [userProfile] = useState({
     name: 'Rithvik Krishna',
     email: 'rithvik@falcon.io',
     organization: 'Acme Enterprise Corp',
   });
 
-  // Device Credentials State
-  const [myId] = useState('849 204 192');
-  const [myPassword, setMyPassword] = useState('fx94-k92a');
+  // Permanent Device Credentials Only (No temporary IDs/passwords)
+  const [permanentId] = useState('849 204 192');
   const [permanentAlias, setPermanentAlias] = useState('rithvik-desktop-main');
   const [permanentPassword, setPermanentPassword] = useState('Falcon#Secure2026!');
-  const [isUnattendedEnabled, setIsUnattendedEnabled] = useState(true);
   const [showPermanentModal, setShowPermanentModal] = useState(false);
 
   // Partner Connection State
   const [partnerId, setPartnerId] = useState('');
+  const [partnerPassword, setPartnerPassword] = useState('');
   const [copiedId, setCopiedId] = useState(false);
-  const [copiedPass, setCopiedPass] = useState(false);
   const [copiedAlias, setCopiedAlias] = useState(false);
+  const [copiedPass, setCopiedPass] = useState(false);
   const [activeSession, setActiveSession] = useState<string | null>(null);
 
-  // Saved Unattended Devices
+  // Saved Permanent Devices List
   const [mySavedDevices] = useState([
     { id: 'dev-001', code: 'rithvik-desktop-main', name: 'Primary Workstation (This PC)', status: 'ONLINE', ip: '192.168.1.104' },
     { id: 'dev-002', code: 'build-server-corp-02', name: 'Production Build Node', status: 'ONLINE', ip: '10.0.4.88' },
@@ -65,7 +60,7 @@ export default function App() {
   };
 
   const handleCopyId = () => {
-    navigator.clipboard.writeText(myId);
+    navigator.clipboard.writeText(permanentId);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
   };
@@ -77,23 +72,14 @@ export default function App() {
   };
 
   const handleCopyPass = () => {
-    navigator.clipboard.writeText(myPassword);
+    navigator.clipboard.writeText(permanentPassword);
     setCopiedPass(true);
     setTimeout(() => setCopiedPass(false), 2000);
   };
 
-  const handleRefreshPassword = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let newPass = '';
-    for (let i = 0; i < 4; i++) newPass += chars.charAt(Math.floor(Math.random() * chars.length));
-    newPass += '-';
-    for (let i = 0; i < 4; i++) newPass += chars.charAt(Math.floor(Math.random() * chars.length));
-    setMyPassword(newPass);
-  };
-
   const handleConnect = () => {
     if (!partnerId) {
-      setActiveSession('912 384 501');
+      setActiveSession('rithvik-desktop-main');
     } else {
       setActiveSession(partnerId);
     }
@@ -127,7 +113,7 @@ export default function App() {
           </div>
           <div>
             <span style={{ fontWeight: '700', fontSize: '15px', letterSpacing: '-0.3px' }}>Falcon Remote Client</span>
-            <span style={{ fontSize: '10px', color: '#06B6D4', fontWeight: '600', marginLeft: '8px' }}>v1.0 ENTERPRISE</span>
+            <span style={{ fontSize: '10px', color: '#06B6D4', fontWeight: '600', marginLeft: '8px' }}>PERMANENT ACCESS ENGINE</span>
           </div>
         </div>
 
@@ -150,7 +136,7 @@ export default function App() {
             </button>
           </div>
         ) : (
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Falcon Secure Authentication Service</span>
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Falcon Enterprise Permanent Access</span>
         )}
       </header>
 
@@ -175,7 +161,7 @@ export default function App() {
               </div>
               <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Sign In to Falcon</h2>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                Access permanent unattended devices and remote control sessions.
+                Log in to view and manage your permanent device access codes.
               </p>
             </div>
 
@@ -227,7 +213,7 @@ export default function App() {
                 onClick={() => setIsLoggedIn(true)}
                 style={{ background: 'none', border: 'none', color: 'var(--accent-indigo)', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
               >
-                Continue with Enterprise Single Sign-On (SSO / SAML) ➔
+                Sign In with Enterprise Single Sign-On (SSO / SAML) ➔
               </button>
             </div>
           </div>
@@ -241,7 +227,7 @@ export default function App() {
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#34D399' }}></span>
                 CONNECTED TO {activeSession}
               </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>1080p @ 60 FPS • H.264 NAL • AES-256-GCM</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>1080p @ 60 FPS • H.264 NAL • Permanent Password Authenticated</span>
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -261,112 +247,121 @@ export default function App() {
             <div style={{ textAlign: 'center' }}>
               <Monitor size={72} color="#6366F1" style={{ marginBottom: '16px' }} />
               <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px' }}>Partner Desktop Viewport ({activeSession})</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Real-time WebRTC DataChannel Stream Active • Unattended Permanent Password Authenticated</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Real-time WebRTC DataChannel Stream Active • Authenticated via Permanent Access Code</p>
             </div>
           </div>
         </div>
       ) : (
-        /* SCREEN 3: Authenticated Dashboard (Permanent Code & Unattended Devices) */
+        /* SCREEN 3: Authenticated Permanent Code Dashboard */
         <main style={{ flex: 1, padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto' }}>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             
-            {/* Left Column: Your Credentials & Permanent Unattended Access Code */}
-            <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Left Column: Exclusive Permanent Device Code & Password */}
+            <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-indigo)', marginBottom: '4px' }}>
-                  <Shield size={18} />
-                  <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>DEVICE CREDENTIALS</span>
+                  <Shield size={20} />
+                  <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>PERMANENT ACCESS CREDENTIALS</span>
                 </div>
-                <h3 style={{ fontSize: '20px', fontWeight: '700' }}>Your Local Computer Access</h3>
+                <h3 style={{ fontSize: '22px', fontWeight: '700' }}>Your Permanent Device Access</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  This device is assigned a permanent ID, custom alias, and permanent password for 24/7 remote connection.
+                </p>
               </div>
 
-              {/* Dynamic 9-Digit ID & Temporary Password */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600' }}>ONE-TIME FALCON ID</span>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '22px', fontWeight: '700', color: '#60A5FA' }}>{myId}</p>
-                  </div>
-                  <button onClick={handleCopyId} className="btn-secondary" style={{ padding: '8px 12px' }}>
-                    {copiedId ? <Check size={16} color="#10B981" /> : <Copy size={16} />}
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                  <div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600' }}>TEMPORARY PASSWORD</span>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', fontWeight: '700', color: '#34D399' }}>{myPassword}</p>
-                  </div>
-                  <button onClick={handleRefreshPassword} className="btn-secondary" style={{ padding: '8px' }} title="Generate New Password">
-                    <RotateCcw size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Permanent Unattended Code & Password Box */}
-              <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#A5B4FC', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <KeyRound size={16} /> PERMANENT UNATTENDED CODE
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#34D399', fontWeight: '600', backgroundColor: 'rgba(16, 185, 129, 0.2)', padding: '2px 8px', borderRadius: '10px' }}>ENABLED</span>
-                </div>
-
+              {/* Permanent ID & Permanent Alias Box */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '14px' }}>
                 <div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Permanent Alias / Device Code:</span>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', fontWeight: '700', color: 'white' }}>{permanentAlias}</span>
-                    <button onClick={handleCopyAlias} style={{ background: 'none', border: 'none', color: '#A5B4FC', cursor: 'pointer' }}>
-                      {copiedAlias ? <Check size={16} color="#10B981" /> : <Copy size={16} />}
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '0.5px' }}>PERMANENT FALCON DEVICE ID</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '24px', fontWeight: '700', color: '#60A5FA' }}>{permanentId}</span>
+                    <button onClick={handleCopyId} className="btn-secondary" style={{ padding: '8px 12px' }}>
+                      {copiedId ? <Check size={16} color="#10B981" /> : <Copy size={16} />}
                     </button>
                   </div>
                 </div>
 
-                <div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Permanent Unattended Password:</span>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: '#34D399', fontWeight: '600', marginTop: '2px' }}>{permanentPassword}</p>
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '0.5px' }}>PERMANENT DEVICE ALIAS</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', fontWeight: '700', color: 'white' }}>{permanentAlias}</span>
+                    <button onClick={handleCopyAlias} className="btn-secondary" style={{ padding: '6px 10px' }}>
+                      {copiedAlias ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+                    </button>
+                  </div>
                 </div>
 
-                <button 
-                  onClick={() => setShowPermanentModal(true)}
-                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', color: 'white', border: '1px solid var(--border-color)', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', marginTop: '4px' }}
-                >
-                  Configure Permanent Unattended Password ➔
-                </button>
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '0.5px' }}>PERMANENT ACCESS PASSWORD</span>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', fontWeight: '700', color: '#34D399', marginTop: '4px' }}>{permanentPassword}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={handleCopyPass} className="btn-secondary" style={{ padding: '6px 10px' }}>
+                        {copiedPass ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+                      </button>
+                      <button onClick={() => setShowPermanentModal(true)} className="btn-secondary" style={{ padding: '6px 10px' }} title="Edit Permanent Password">
+                        <Edit3 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
+              <div style={{ padding: '14px', backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }}></div>
+                <span style={{ fontSize: '12px', color: '#34D399', fontWeight: '600' }}>● Permanent Unattended Service Ready (24/7 Active)</span>
+              </div>
             </div>
 
-            {/* Right Column: Connect to Partner & Unattended Devices */}
-            <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Right Column: Connect to Remote Computer */}
+            <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
-                  <Monitor size={18} />
+                  <Monitor size={20} />
                   <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>REMOTE CONTROL</span>
                 </div>
-                <h3 style={{ fontSize: '20px', fontWeight: '700' }}>Connect to Partner or Device</h3>
+                <h3 style={{ fontSize: '22px', fontWeight: '700' }}>Connect to Partner Device</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  Enter partner's permanent Falcon ID or permanent alias to connect.
+                </p>
               </div>
 
-              <div>
-                <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '6px', display: 'block' }}>PARTNER CODE / PERMANENT ALIAS</label>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  placeholder="Enter 9-Digit ID or Permanent Alias (e.g. build-server-corp-02)" 
-                  value={partnerId} 
-                  onChange={(e) => setPartnerId(e.target.value)}
-                  style={{ fontSize: '15px' }}
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '6px', display: 'block' }}>PERMANENT FALCON ID / ALIAS</label>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    placeholder="Enter Permanent ID (e.g. 849 204 192) or Alias" 
+                    value={partnerId} 
+                    onChange={(e) => setPartnerId(e.target.value)}
+                    style={{ fontSize: '15px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '6px', display: 'block' }}>PERMANENT ACCESS PASSWORD</label>
+                  <input 
+                    type="password" 
+                    className="input-field" 
+                    placeholder="Enter Partner's Permanent Password" 
+                    value={partnerPassword} 
+                    onChange={(e) => setPartnerPassword(e.target.value)}
+                    style={{ fontSize: '15px' }}
+                  />
+                </div>
               </div>
 
               <button className="btn-connect" style={{ justifyContent: 'center' }} onClick={handleConnect}>
-                Connect to Partner <ArrowRight size={18} />
+                Connect to Remote Computer <ArrowRight size={18} />
               </button>
 
-              {/* Saved Unattended Devices List */}
+              {/* Saved Permanent Devices List */}
               <div style={{ marginTop: '8px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '700', display: 'block', marginBottom: '10px' }}>MY UNATTENDED SAVED DEVICES</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '700', display: 'block', marginBottom: '10px' }}>PERMANENT SAVED DEVICES</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {mySavedDevices.map((dev) => (
                     <div 
@@ -399,20 +394,16 @@ export default function App() {
 
           </div>
 
-          {/* Modal: Permanent Password Configuration */}
+          {/* Modal: Edit Permanent Credentials */}
           {showPermanentModal && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
               <div className="glass-panel" style={{ width: '480px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Configure Permanent Password</h3>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Edit Permanent Credentials</h3>
                   <button onClick={() => setShowPermanentModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                     <X size={20} />
                   </button>
                 </div>
-
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  Set a custom permanent password to access this computer remotely even when no user is sitting in front of it.
-                </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
@@ -427,7 +418,7 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '4px', display: 'block' }}>CUSTOM PERMANENT PASSWORD</label>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600', marginBottom: '4px', display: 'block' }}>PERMANENT ACCESS PASSWORD</label>
                     <input 
                       type="text" 
                       className="input-field" 
@@ -440,7 +431,7 @@ export default function App() {
 
                 <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                   <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowPermanentModal(false)}>
-                    Save Permanent Credentials
+                    Save Credentials
                   </button>
                 </div>
               </div>
