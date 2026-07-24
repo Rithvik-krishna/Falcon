@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/falcon?schema=public"
+  REDIS_URL: "redis://localhost:6379"
+  JWT_SECRET: "falcon_production_secret_key_change_me_in_prod_12345"
+
 jobs:
   stage-1-checkout:
     name: "Stage 1: Checkout & Cache"
