@@ -1,5 +1,8 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
+
+let viteProcess;
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -9,7 +12,7 @@ function createWindow() {
     minHeight: 600,
     title: 'Falcon Remote Client',
     frame: true,
-    titleBarStyle: 'default',
+    autoHideMenuBar: true,
     backgroundColor: '#0F172A',
     webPreferences: {
       nodeIntegration: true,
@@ -18,12 +21,22 @@ function createWindow() {
   });
 
   const devUrl = 'http://localhost:5174';
-  win.loadURL(devUrl).catch(() => {
-    win.loadFile(path.join(__dirname, 'dist', 'index.html'));
-  });
+  
+  const load = () => {
+    win.loadURL(devUrl).catch(() => {
+      setTimeout(load, 400);
+    });
+  };
+  load();
 }
 
 app.whenReady().then(() => {
+  // Spawn Vite background process silently for Electron window
+  viteProcess = spawn('npx.cmd', ['vite', '--port', '5174'], {
+    cwd: __dirname,
+    shell: true,
+  });
+
   createWindow();
 
   app.on('activate', () => {
@@ -34,6 +47,9 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (viteProcess) {
+    try { viteProcess.kill(); } catch (e) {}
+  }
   if (process.platform !== 'darwin') {
     app.quit();
   }
