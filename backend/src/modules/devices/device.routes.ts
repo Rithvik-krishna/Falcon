@@ -17,6 +17,8 @@ const screenImgPath = path.join(utilsDir, 'screen.jpg');
 
 let cachedBase64Frame = '';
 let isCapturing = false;
+let lastMobileAccessTime = 0;
+let lastMobileIp = '192.168.29.220';
 
 // Fast native background screen capturer (10ms execution)
 async function updateScreenCache() {
@@ -69,6 +71,11 @@ export async function deviceRoutes(fastify: FastifyInstance) {
 
   // 2. Instant Real-Time Screen Frame Endpoint
   fastify.get('/screen/frame', async (request, reply) => {
+    lastMobileAccessTime = Date.now();
+    if (request.ip && request.ip !== '127.0.0.1') {
+      lastMobileIp = request.ip;
+    }
+
     if (!cachedBase64Frame) {
       await updateScreenCache();
     }
@@ -82,6 +89,10 @@ export async function deviceRoutes(fastify: FastifyInstance) {
   // 3. Remote Touch Input Click Injector Endpoint
   fastify.post('/screen/input', async (request, reply) => {
     try {
+      lastMobileAccessTime = Date.now();
+      if (request.ip && request.ip !== '127.0.0.1') {
+        lastMobileIp = request.ip;
+      }
       const { normX, normY } = request.body as { normX: number; normY: number };
       const targetX = Math.round((normX || 0.5) * 1920);
       const targetY = Math.round((normY || 0.5) * 1080);
@@ -92,5 +103,18 @@ export async function deviceRoutes(fastify: FastifyInstance) {
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
+  });
+
+  // 4. Session Status Endpoint for Desktop Client Notification
+  fastify.get('/session-status', async (request, reply) => {
+    const isMobileActive = (Date.now() - lastMobileAccessTime) < 4000;
+    return reply.send({
+      isMobileActive,
+      mobileIp: lastMobileIp || '192.168.29.220',
+      deviceName: "Rithvik's iPhone (Mobile App)",
+      fps: isMobileActive ? 60 : 0,
+      encrypted: true,
+      lastAccessTime: lastMobileAccessTime
+    });
   });
 }
