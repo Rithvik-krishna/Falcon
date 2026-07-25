@@ -37,18 +37,20 @@ export async function deviceRoutes(fastify: FastifyInstance) {
     });
   });
 
-  // 2. Real-Time Live Desktop Screen Frame Capture Endpoint
+  // 2. Real-Time Live Desktop Screen Frame Capture Endpoint (Base64 for iOS React Native compatibility)
   fastify.get('/screen/frame', async (request, reply) => {
     try {
-      // Execute PowerShell screen capture
+      // Run PowerShell capture
       await execAsync(`powershell -ExecutionPolicy Bypass -File "${captureScriptPath}"`);
       
       if (fs.existsSync(screenImgPath)) {
         const imgBuffer = fs.readFileSync(screenImgPath);
-        return reply
-          .header('Content-Type', 'image/jpeg')
-          .header('Cache-Control', 'no-cache, no-store, must-revalidate')
-          .send(imgBuffer);
+        const base64 = imgBuffer.toString('base64');
+        return reply.send({
+          success: true,
+          timestamp: Date.now(),
+          base64: `data:image/jpeg;base64,${base64}`
+        });
       } else {
         return reply.status(500).send({ error: 'Screen capture failed' });
       }
@@ -61,7 +63,6 @@ export async function deviceRoutes(fastify: FastifyInstance) {
   fastify.post('/screen/input', async (request, reply) => {
     try {
       const { normX, normY } = request.body as { normX: number; normY: number };
-      // Map normalized coordinates (0.0 to 1.0) to 1920x1080 resolution
       const targetX = Math.round((normX || 0.5) * 1920);
       const targetY = Math.round((normY || 0.5) * 1080);
 

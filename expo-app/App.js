@@ -23,8 +23,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState('');
   const [isLiveConnected, setIsLiveConnected] = useState(false);
-  const [frameTimestamp, setFrameTimestamp] = useState(Date.now());
-  const [fps, setFps] = useState(10);
+  const [liveScreenUri, setLiveScreenUri] = useState(null);
+  const [isFetchingFrame, setIsFetchingFrame] = useState(false);
 
   // Fetch real-time single device metrics (This Laptop)
   const fetchSingleDevice = async () => {
@@ -46,13 +46,30 @@ export default function App() {
         alias: 'rithvik-desktop-main', 
         os: 'Windows 11 Pro', 
         ip: '192.168.29.119', 
-        cpu: +(14 + Math.sin(now / 2000) * 4).toFixed(1), 
+        cpu: +(12 + Math.sin(now / 2000) * 4).toFixed(1), 
         ram: +(46 + Math.cos(now / 3000) * 2).toFixed(1), 
         latency: 4, 
         isOnline: true 
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Poll live screen frame base64
+  const fetchScreenFrame = async () => {
+    if (isFetchingFrame) return;
+    try {
+      setIsFetchingFrame(true);
+      const res = await fetch(FRAME_API_URL);
+      const data = await res.json();
+      if (data && data.base64) {
+        setLiveScreenUri(data.base64);
+      }
+    } catch (e) {
+      // Frame catch
+    } finally {
+      setIsFetchingFrame(false);
     }
   };
 
@@ -63,13 +80,12 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Poll live screen frames continuously when Viewport tab is active
+  // Poll live screen frame base64 continuously when Screen Viewport tab is active
   useEffect(() => {
     let frameInterval;
     if (activeTab === 'remote') {
-      frameInterval = setInterval(() => {
-        setFrameTimestamp(Date.now());
-      }, 300); // ~3-4 FPS live desktop screen refresh rate
+      fetchScreenFrame();
+      frameInterval = setInterval(fetchScreenFrame, 500); // 2 FPS live laptop desktop stream
     }
     return () => clearInterval(frameInterval);
   }, [activeTab]);
@@ -87,8 +103,10 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ normX, normY })
       });
+      // Immediately refresh screen after touch click
+      setTimeout(fetchScreenFrame, 200);
     } catch (e) {
-      // Input fallback
+      // Input catch
     }
   };
 
@@ -104,7 +122,7 @@ export default function App() {
           </View>
           <View>
             <Text style={styles.appName}>FALCON DESKTOP LIVE</Text>
-            <Text style={styles.appSub}>1 REAL DEVICE • {lastSyncTime}</Text>
+            <Text style={styles.appSub}>1 REAL LAPTOP • {lastSyncTime}</Text>
           </View>
         </View>
 
@@ -153,7 +171,7 @@ export default function App() {
           <View style={styles.tabContent}>
             <View style={styles.titleRow}>
               <View>
-                <Text style={styles.sectionTitle}>Your Active Computer</Text>
+                <Text style={styles.sectionTitle}>Your Active Laptop</Text>
                 <Text style={styles.sectionDesc}>1 Real Device Connected • {lastSyncTime}</Text>
               </View>
             </View>
@@ -216,23 +234,30 @@ export default function App() {
             {/* Interactive Screen Capture Image Canvas */}
             <TouchableWithoutFeedback onPress={handleTouchScreen}>
               <View style={styles.viewportCanvas}>
-                <Image 
-                  source={{ uri: `${FRAME_API_URL}?t=${frameTimestamp}` }}
-                  style={styles.screenImage}
-                  resizeMode="contain"
-                />
+                {liveScreenUri ? (
+                  <Image 
+                    source={{ uri: liveScreenUri }}
+                    style={styles.screenImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#6366F1" />
+                    <Text style={styles.loadingText}>Capturing Live Laptop Desktop Screen...</Text>
+                  </View>
+                )}
               </View>
             </TouchableWithoutFeedback>
 
             {/* Touch Hint */}
             <Text style={styles.touchHintText}>
-              👆 Tap anywhere on the screen image to click on your laptop!
+              👆 Tap anywhere on the laptop screen image to click on your computer!
             </Text>
 
             {/* Controls Bar */}
             <View style={styles.controlsRow}>
-              <TouchableOpacity style={styles.controlBtn} onPress={() => setFrameTimestamp(Date.now())}>
-                <Text style={styles.controlBtnText}>🔄 Refresh Frame</Text>
+              <TouchableOpacity style={styles.controlBtn} onPress={fetchScreenFrame}>
+                <Text style={styles.controlBtnText}>🔄 Refresh Screen</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.controlBtn} onPress={() => Alert.alert('Touch Controls', 'Tap on screen image to trigger Win32 click on laptop.')}>
@@ -509,16 +534,27 @@ const styles = StyleSheet.create({
   },
   viewportCanvas: {
     width: '100%',
-    height: 220,
-    backgroundColor: '#000',
+    height: 240,
+    backgroundColor: '#0F172A',
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   screenImage: {
     width: '100%',
     height: '100%',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '600',
   },
   touchHintText: {
     color: '#34D399',
