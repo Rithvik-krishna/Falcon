@@ -11,8 +11,13 @@ import {
   Alert,
   ActivityIndicator,
   TouchableWithoutFeedback,
-  TextInput
+  TextInput,
+  Dimensions
 } from 'react-native';
+
+const { width } = Dimensions.get('window');
+const CANVAS_WIDTH = width - 32;
+const CANVAS_HEIGHT = Math.round(CANVAS_WIDTH * (9 / 16));
 
 const FLEET_API_URL = 'http://192.168.29.119:3000/api/v1/devices/public-fleet';
 const FRAME_API_URL = 'http://192.168.29.119:3000/api/v1/devices/screen/frame';
@@ -35,7 +40,7 @@ export default function App() {
   const [lastSyncTime, setLastSyncTime] = useState('');
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [liveScreenUri, setLiveScreenUri] = useState(null);
-  const [isFetchingFrame, setIsFetchingFrame] = useState(false);
+  const [frameCount, setFrameCount] = useState(0);
 
   // Handle Account Login
   const handleAccountLogin = () => {
@@ -91,18 +96,16 @@ export default function App() {
 
   // Poll live screen frame base64
   const fetchScreenFrame = async () => {
-    if (isFetchingFrame) return;
     try {
-      setIsFetchingFrame(true);
       const res = await fetch(FRAME_API_URL);
       const data = await res.json();
       if (data && data.base64) {
-        setLiveScreenUri(data.base64);
+        const cleanBase64 = data.base64.replace(/(\r\n|\n|\r)/gm, "");
+        setLiveScreenUri(cleanBase64);
+        setFrameCount(c => c + 1);
       }
     } catch (e) {
-      // Frame catch
-    } finally {
-      setIsFetchingFrame(false);
+      // Frame fetch error
     }
   };
 
@@ -127,9 +130,8 @@ export default function App() {
   // Handle Touch Gesture Click on Laptop Screen
   const handleTouchScreen = async (event) => {
     const { locationX, locationY } = event.nativeEvent;
-    // Assuming 340 width x 200 height viewport canvas box
-    const normX = Math.max(0, Math.min(1, locationX / 340));
-    const normY = Math.max(0, Math.min(1, locationY / 200));
+    const normX = Math.max(0, Math.min(1, locationX / CANVAS_WIDTH));
+    const normY = Math.max(0, Math.min(1, locationY / CANVAS_HEIGHT));
 
     try {
       await fetch(INPUT_API_URL, {
@@ -138,7 +140,7 @@ export default function App() {
         body: JSON.stringify({ normX, normY })
       });
       // Immediately refresh screen after touch click
-      setTimeout(fetchScreenFrame, 200);
+      setTimeout(fetchScreenFrame, 250);
     } catch (e) {
       // Input catch
     }
@@ -376,22 +378,22 @@ export default function App() {
                   Primary Workstation (Rithvik's Laptop Screen)
                 </Text>
               </View>
-              <Text style={styles.sessionMeta}>Live Stream • Touch to Click</Text>
+              <Text style={styles.sessionMeta}>Frames Received: {frameCount}</Text>
             </View>
 
             {/* Interactive Screen Capture Image Canvas */}
             <TouchableWithoutFeedback onPress={handleTouchScreen}>
-              <View style={styles.viewportCanvas}>
+              <View style={[styles.viewportCanvas, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }]}>
                 {liveScreenUri ? (
                   <Image 
                     source={{ uri: liveScreenUri }}
-                    style={styles.screenImage}
-                    resizeMode="contain"
+                    style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
+                    resizeMode="cover"
                   />
                 ) : (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#6366F1" />
-                    <Text style={styles.loadingText}>Capturing Live Laptop Desktop Screen...</Text>
+                    <Text style={styles.loadingText}>Connecting to Live Laptop Desktop Stream...</Text>
                   </View>
                 )}
               </View>
@@ -498,7 +500,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#6366F1',
     alignItems: 'center',
-    justifyContent: 'center',
+    justify.content: 'center',
     marginBottom: 8,
   },
   loginTitle: {
@@ -794,8 +796,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   viewportCanvas: {
-    width: '100%',
-    height: 240,
     backgroundColor: '#0F172A',
     borderRadius: 14,
     overflow: 'hidden',
@@ -803,10 +803,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  screenImage: {
-    width: '100%',
-    height: '100%',
   },
   loadingContainer: {
     alignItems: 'center',
