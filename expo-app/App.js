@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
   },
   sessionHeader: {
     flexDirection: 'row',
-    justify.content: 'space-between',
+    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#1E293B',
     padding: 12,
