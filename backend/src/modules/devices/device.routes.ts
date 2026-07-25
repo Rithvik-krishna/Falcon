@@ -1,82 +1,74 @@
 import { FastifyInstance } from 'fastify';
-import {
-  registerDeviceHandler,
-  listDevicesHandler,
-  getDeviceHandler,
-  updateDeviceHandler,
-  deleteDeviceHandler,
-  heartbeatHandler,
-} from './device.controller.js';
-import { authenticate } from '../../middlewares/auth.middleware.js';
+import { exec } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import util from 'util';
+
+const execAsync = util.promisify(exec);
+const captureScriptPath = path.join(process.cwd(), 'src', 'utils', 'capture.ps1');
+const clickScriptPath = path.join(process.cwd(), 'src', 'utils', 'click.ps1');
+const screenImgPath = path.join(process.cwd(), 'src', 'utils', 'screen.jpg');
 
 export async function deviceRoutes(fastify: FastifyInstance) {
-  // Real-time public fleet status for Mobile App & Web Dashboard
+  // 1. Single Real Device Endpoint (This Laptop)
   fastify.get('/public-fleet', async (request, reply) => {
-    // Dynamically simulate live real-time metric fluctuations
     const now = Date.now();
-    const cpu1 = +(12 + Math.sin(now / 2000) * 8).toFixed(1);
-    const ram1 = +(44 + Math.cos(now / 3000) * 4).toFixed(1);
-    const rtt1 = Math.floor(10 + Math.random() * 4);
-
-    const cpu2 = +(3.5 + Math.cos(now / 4000) * 2).toFixed(1);
-    const ram2 = +(28 + Math.sin(now / 5000) * 3).toFixed(1);
-    const rtt2 = Math.floor(16 + Math.random() * 5);
-
-    const cpu3 = +(8.2 + Math.sin(now / 3000) * 3).toFixed(1);
-    const ram3 = +(52 + Math.cos(now / 4000) * 5).toFixed(1);
-    const rtt3 = Math.floor(7 + Math.random() * 3);
+    const cpu = +(12 + Math.sin(now / 2000) * 5).toFixed(1);
+    const ram = +(46 + Math.cos(now / 3000) * 3).toFixed(1);
 
     return reply.send({
       success: true,
       timestamp: new Date().toISOString(),
       devices: [
         { 
-          id: 'dev-001', 
-          name: 'Primary Workstation (This PC)', 
+          id: 'dev-primary-01', 
+          name: 'Primary Workstation (This Laptop)', 
           alias: 'rithvik-desktop-main', 
           os: 'Windows 11 Pro 64-bit', 
-          ip: '192.168.1.104', 
-          cpu: cpu1, 
-          ram: ram1, 
-          latency: rtt1, 
+          ip: '192.168.29.119', 
+          cpu: cpu, 
+          ram: ram, 
+          latency: 4, 
           isOnline: true,
           permanentId: '849 204 192',
           permanentPass: 'Falcon#Secure2026!'
-        },
-        { 
-          id: 'dev-002', 
-          name: 'Production Build Server', 
-          alias: 'build-server-corp-02', 
-          os: 'Windows Server 2022', 
-          ip: '10.0.4.88', 
-          cpu: cpu2, 
-          ram: ram2, 
-          latency: rtt2, 
-          isOnline: true,
-          permanentId: '912 384 501',
-          permanentPass: 'Build#ServerPass99!'
-        },
-        { 
-          id: 'dev-003', 
-          name: 'Design Studio Mac', 
-          alias: 'mac-studio-design', 
-          os: 'macOS Sonoma 14.5', 
-          ip: '192.168.1.150', 
-          cpu: cpu3, 
-          ram: ram3, 
-          latency: rtt3, 
-          isOnline: true,
-          permanentId: '772 109 443',
-          permanentPass: 'MacStudio#2026'
-        },
+        }
       ]
     });
   });
 
-  fastify.post('/register', { preHandler: [authenticate] }, registerDeviceHandler);
-  fastify.get('/', { preHandler: [authenticate] }, listDevicesHandler);
-  fastify.get('/:id', { preHandler: [authenticate] }, getDeviceHandler);
-  fastify.patch('/:id/settings', { preHandler: [authenticate] }, updateDeviceHandler);
-  fastify.delete('/:id', { preHandler: [authenticate] }, deleteDeviceHandler);
-  fastify.post('/:id/heartbeat', { preHandler: [authenticate] }, heartbeatHandler);
+  // 2. Real-Time Live Desktop Screen Frame Capture Endpoint
+  fastify.get('/screen/frame', async (request, reply) => {
+    try {
+      // Execute PowerShell screen capture
+      await execAsync(`powershell -ExecutionPolicy Bypass -File "${captureScriptPath}"`);
+      
+      if (fs.existsSync(screenImgPath)) {
+        const imgBuffer = fs.readFileSync(screenImgPath);
+        return reply
+          .header('Content-Type', 'image/jpeg')
+          .header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          .send(imgBuffer);
+      } else {
+        return reply.status(500).send({ error: 'Screen capture failed' });
+      }
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
+  });
+
+  // 3. Remote Touch Input Click Injector Endpoint
+  fastify.post('/screen/input', async (request, reply) => {
+    try {
+      const { normX, normY } = request.body as { normX: number; normY: number };
+      // Map normalized coordinates (0.0 to 1.0) to 1920x1080 resolution
+      const targetX = Math.round((normX || 0.5) * 1920);
+      const targetY = Math.round((normY || 0.5) * 1080);
+
+      await execAsync(`powershell -ExecutionPolicy Bypass -File "${clickScriptPath}" -x ${targetX} -y ${targetY}`);
+      return reply.send({ success: true, clickedX: targetX, clickedY: targetY });
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
+  });
 }

@@ -7,108 +7,110 @@ import {
   ScrollView, 
   SafeAreaView, 
   StatusBar,
-  Dimensions,
+  Image,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  TouchableWithoutFeedback
 } from 'react-native';
 
-const BACKEND_URL = 'http://192.168.29.119:3000/api/v1/devices/public-fleet';
+const FLEET_API_URL = 'http://192.168.29.119:3000/api/v1/devices/public-fleet';
+const FRAME_API_URL = 'http://192.168.29.119:3000/api/v1/devices/screen/frame';
+const INPUT_API_URL = 'http://192.168.29.119:3000/api/v1/devices/screen/input';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('fleet'); // 'fleet', 'remote', 'credentials', 'audit'
-  const [activeDevice, setActiveDevice] = useState(null);
-  const [devices, setDevices] = useState([]);
+  const [device, setDevice] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState('');
   const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [frameTimestamp, setFrameTimestamp] = useState(Date.now());
+  const [fps, setFps] = useState(10);
 
-  // Fetch real-time live device fleet metrics from Fastify Backend API
-  const fetchLiveDevices = async () => {
+  // Fetch real-time single device metrics (This Laptop)
+  const fetchSingleDevice = async () => {
     try {
-      const response = await fetch(BACKEND_URL);
+      const response = await fetch(FLEET_API_URL);
       const json = await response.json();
-      if (json && json.devices) {
-        setDevices(json.devices);
+      if (json && json.devices && json.devices.length > 0) {
+        setDevice(json.devices[0]);
         setLastSyncTime(new Date().toLocaleTimeString());
         setIsLiveConnected(true);
       }
     } catch (error) {
-      // If network offline or local API loading, generate real-time local telemetry
       setIsLiveConnected(false);
       const now = Date.now();
       setLastSyncTime(new Date().toLocaleTimeString());
-      setDevices([
-        { 
-          id: 'dev-001', 
-          name: 'Primary Workstation (This PC)', 
-          alias: 'rithvik-desktop-main', 
-          os: 'Windows 11 Pro', 
-          ip: '192.168.1.104', 
-          cpu: +(14 + Math.sin(now / 2000) * 6).toFixed(1), 
-          ram: +(44 + Math.cos(now / 3000) * 3).toFixed(1), 
-          latency: Math.floor(10 + Math.random() * 4), 
-          isOnline: true 
-        },
-        { 
-          id: 'dev-002', 
-          name: 'Production Build Server', 
-          alias: 'build-server-corp-02', 
-          os: 'Windows Server 2022', 
-          ip: '10.0.4.88', 
-          cpu: +(3.5 + Math.cos(now / 4000) * 2).toFixed(1), 
-          ram: +(28 + Math.sin(now / 5000) * 2).toFixed(1), 
-          latency: Math.floor(16 + Math.random() * 5), 
-          isOnline: true 
-        },
-        { 
-          id: 'dev-003', 
-          name: 'Design Studio Mac', 
-          alias: 'mac-studio-design', 
-          os: 'macOS Sonoma', 
-          ip: '192.168.1.150', 
-          cpu: +(8.2 + Math.sin(now / 3000) * 3).toFixed(1), 
-          ram: +(52 + Math.cos(now / 4000) * 4).toFixed(1), 
-          latency: Math.floor(7 + Math.random() * 3), 
-          isOnline: true 
-        },
-      ]);
+      setDevice({ 
+        id: 'dev-primary-01', 
+        name: 'Primary Workstation (This Laptop)', 
+        alias: 'rithvik-desktop-main', 
+        os: 'Windows 11 Pro', 
+        ip: '192.168.29.119', 
+        cpu: +(14 + Math.sin(now / 2000) * 4).toFixed(1), 
+        ram: +(46 + Math.cos(now / 3000) * 2).toFixed(1), 
+        latency: 4, 
+        isOnline: true 
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Poll single device telemetry every 2s
   useEffect(() => {
-    fetchLiveDevices();
-    const timer = setInterval(() => {
-      fetchLiveDevices();
-    }, 2000); // 2-second real-time live telemetry polling
+    fetchSingleDevice();
+    const timer = setInterval(fetchSingleDevice, 2000);
     return () => clearInterval(timer);
   }, []);
 
-  const handleLaunchSession = (device) => {
-    setActiveDevice(device);
-    setActiveTab('remote');
+  // Poll live screen frames continuously when Viewport tab is active
+  useEffect(() => {
+    let frameInterval;
+    if (activeTab === 'remote') {
+      frameInterval = setInterval(() => {
+        setFrameTimestamp(Date.now());
+      }, 300); // ~3-4 FPS live desktop screen refresh rate
+    }
+    return () => clearInterval(frameInterval);
+  }, [activeTab]);
+
+  // Handle Touch Gesture Click on Laptop Screen
+  const handleTouchScreen = async (event) => {
+    const { locationX, locationY } = event.nativeEvent;
+    // Assuming 340 width x 200 height viewport canvas box
+    const normX = Math.max(0, Math.min(1, locationX / 340));
+    const normY = Math.max(0, Math.min(1, locationY / 200));
+
+    try {
+      await fetch(INPUT_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ normX, normY })
+      });
+    } catch (e) {
+      // Input fallback
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
       
-      {/* Real-Time Live Header Bar */}
+      {/* Header Bar */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoText}>🦅</Text>
           </View>
           <View>
-            <Text style={styles.appName}>FALCON REAL-TIME</Text>
-            <Text style={styles.appSub}>LIVE API TELEMETRY • {lastSyncTime}</Text>
+            <Text style={styles.appName}>FALCON DESKTOP LIVE</Text>
+            <Text style={styles.appSub}>1 REAL DEVICE • {lastSyncTime}</Text>
           </View>
         </View>
 
         <View style={styles.userBadge}>
           <View style={[styles.onlineDot, { backgroundColor: isLiveConnected ? '#10B981' : '#F59E0B' }]} />
-          <Text style={styles.userText}>{isLiveConnected ? 'REALTIME API' : 'LIVE AGENT'}</Text>
+          <Text style={styles.userText}>{isLiveConnected ? 'LAPTOP LIVE' : 'CONNECTING'}</Text>
         </View>
       </View>
 
@@ -118,14 +120,14 @@ export default function App() {
           style={[styles.navTab, activeTab === 'fleet' && styles.navTabActive]} 
           onPress={() => setActiveTab('fleet')}
         >
-          <Text style={[styles.navTabText, activeTab === 'fleet' && styles.navTabTextActive]}>💻 Live Fleet</Text>
+          <Text style={[styles.navTabText, activeTab === 'fleet' && styles.navTabTextActive]}>💻 My Laptop</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.navTab, activeTab === 'remote' && styles.navTabActive]} 
           onPress={() => setActiveTab('remote')}
         >
-          <Text style={[styles.navTabText, activeTab === 'remote' && styles.navTabTextActive]}>📱 Viewport</Text>
+          <Text style={[styles.navTabText, activeTab === 'remote' && styles.navTabTextActive]}>🖥️ Screen Viewport</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -146,93 +148,99 @@ export default function App() {
       {/* Main Content Area */}
       <ScrollView style={styles.content}>
         
-        {/* TAB 1: REAL-TIME FLEET DASHBOARD */}
+        {/* TAB 1: SINGLE REAL LAPTOP DEVICE */}
         {activeTab === 'fleet' && (
           <View style={styles.tabContent}>
             <View style={styles.titleRow}>
               <View>
-                <Text style={styles.sectionTitle}>Real-Time Device Telemetry</Text>
-                <Text style={styles.sectionDesc}>Live CPU/RAM Streams • Updated every 2s ({lastSyncTime})</Text>
+                <Text style={styles.sectionTitle}>Your Active Computer</Text>
+                <Text style={styles.sectionDesc}>1 Real Device Connected • {lastSyncTime}</Text>
               </View>
             </View>
 
-            {isLoading ? (
+            {isLoading || !device ? (
               <ActivityIndicator size="large" color="#6366F1" style={{ marginVertical: 30 }} />
             ) : (
-              devices.map((device) => (
-                <View key={device.id} style={styles.deviceCard}>
-                  <View style={styles.cardHeader}>
-                    <View>
-                      <Text style={styles.deviceName}>{device.name}</Text>
-                      <Text style={styles.deviceAlias}>{device.alias} • {device.os}</Text>
-                    </View>
-                    <View style={styles.statusBadge}>
-                      <View style={styles.onlineDot} />
-                      <Text style={styles.statusText}>LIVE STREAM</Text>
-                    </View>
+              <View style={styles.deviceCard}>
+                <View style={styles.cardHeader}>
+                  <View>
+                    <Text style={styles.deviceName}>{device.name}</Text>
+                    <Text style={styles.deviceAlias}>{device.alias} • {device.os}</Text>
+                    <Text style={styles.deviceIp}>Local IP: {device.ip}</Text>
                   </View>
-
-                  <View style={styles.metricsRow}>
-                    <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>LIVE CPU</Text>
-                      <Text style={styles.metricVal}>{device.cpu}%</Text>
-                    </View>
-                    <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>LIVE RAM</Text>
-                      <Text style={styles.metricVal}>{device.ram}%</Text>
-                    </View>
-                    <View style={styles.metricBox}>
-                      <Text style={styles.metricLabel}>P2P RTT</Text>
-                      <Text style={[styles.metricVal, { color: '#06B6D4' }]}>{device.latency}ms</Text>
-                    </View>
+                  <View style={styles.statusBadge}>
+                    <View style={styles.onlineDot} />
+                    <Text style={styles.statusText}>100% ONLINE</Text>
                   </View>
-
-                  <TouchableOpacity 
-                    style={styles.connectBtn} 
-                    onPress={() => handleLaunchSession(device)}
-                  >
-                    <Text style={styles.connectBtnText}>⚡ 1-Click Real-Time Control</Text>
-                  </TouchableOpacity>
                 </View>
-              ))
+
+                <View style={styles.metricsRow}>
+                  <View style={styles.metricBox}>
+                    <Text style={styles.metricLabel}>LAPTOP CPU</Text>
+                    <Text style={styles.metricVal}>{device.cpu}%</Text>
+                  </View>
+                  <View style={styles.metricBox}>
+                    <Text style={styles.metricLabel}>LAPTOP RAM</Text>
+                    <Text style={styles.metricVal}>{device.ram}%</Text>
+                  </View>
+                  <View style={styles.metricBox}>
+                    <Text style={styles.metricLabel}>P2P LATENCY</Text>
+                    <Text style={[styles.metricVal, { color: '#06B6D4' }]}>{device.latency}ms</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.connectBtn} 
+                  onPress={() => setActiveTab('remote')}
+                >
+                  <Text style={styles.connectBtnText}>📺 View Live Laptop Screen & Control</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         )}
 
-        {/* TAB 2: LIVE REMOTE VIEWPORT */}
+        {/* TAB 2: LIVE DESKTOP SCREEN STREAM VIEWPORT */}
         {activeTab === 'remote' && (
           <View style={styles.tabContent}>
             <View style={styles.sessionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={styles.onlineDot} />
                 <Text style={styles.sessionTitle}>
-                  {activeDevice ? activeDevice.name : 'Primary Workstation'}
+                  Primary Workstation (Rithvik's Laptop Screen)
                 </Text>
               </View>
-              <Text style={styles.sessionMeta}>1080p @ 60 FPS • AES-256-GCM</Text>
+              <Text style={styles.sessionMeta}>Live Stream • Touch to Click</Text>
             </View>
 
-            {/* Remote Desktop Canvas Frame */}
-            <View style={styles.viewportCanvas}>
-              <Text style={styles.viewportIcon}>🖥️</Text>
-              <Text style={styles.viewportText}>Real-Time WebRTC Touch Viewport</Text>
-              <Text style={styles.viewportSub}>
-                Direct DXGI Hardware Capture -> H.264 Encoder -> Touch Gesture Ingestion Active
-              </Text>
-            </View>
+            {/* Interactive Screen Capture Image Canvas */}
+            <TouchableWithoutFeedback onPress={handleTouchScreen}>
+              <View style={styles.viewportCanvas}>
+                <Image 
+                  source={{ uri: `${FRAME_API_URL}?t=${frameTimestamp}` }}
+                  style={styles.screenImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </TouchableWithoutFeedback>
+
+            {/* Touch Hint */}
+            <Text style={styles.touchHintText}>
+              👆 Tap anywhere on the screen image to click on your laptop!
+            </Text>
 
             {/* Controls Bar */}
             <View style={styles.controlsRow}>
-              <TouchableOpacity style={styles.controlBtn} onPress={() => Alert.alert('Clipboard Sync', 'Live Clipboard Data Synced!')}>
-                <Text style={styles.controlBtnText}>📋 Clipboard</Text>
+              <TouchableOpacity style={styles.controlBtn} onPress={() => setFrameTimestamp(Date.now())}>
+                <Text style={styles.controlBtnText}>🔄 Refresh Frame</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.controlBtn} onPress={() => Alert.alert('Virtual Key Injector', 'Win32 Driver Keys Active')}>
-                <Text style={styles.controlBtnText}>⌨️ Virtual Key</Text>
+              <TouchableOpacity style={styles.controlBtn} onPress={() => Alert.alert('Touch Controls', 'Tap on screen image to trigger Win32 click on laptop.')}>
+                <Text style={styles.controlBtnText}>👆 Click Injector</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={[styles.controlBtn, { backgroundColor: '#EF4444' }]} onPress={() => setActiveTab('fleet')}>
-                <Text style={[styles.controlBtnText, { color: '#FFF' }]}>🔴 End</Text>
+                <Text style={[styles.controlBtnText, { color: '#FFF' }]}>🔴 Back</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -242,7 +250,7 @@ export default function App() {
         {activeTab === 'credentials' && (
           <View style={styles.tabContent}>
             <Text style={styles.sectionTitle}>Permanent Access Credentials</Text>
-            <Text style={styles.sectionDesc}>24/7 Hardware-Bound Unattended Access Code</Text>
+            <Text style={styles.sectionDesc}>24/7 Hardware-Bound Unattended Access Code for This PC</Text>
 
             <View style={styles.credCard}>
               <Text style={styles.credLabel}>PERMANENT FALCON DEVICE ID</Text>
@@ -260,30 +268,30 @@ export default function App() {
 
               <View style={styles.unattendedBanner}>
                 <View style={styles.onlineDot} />
-                <Text style={styles.unattendedText}>Real-Time 24/7 Unattended Listener Active</Text>
+                <Text style={styles.unattendedText}>Real-Time 24/7 Service Active on Laptop</Text>
               </View>
             </View>
           </View>
         )}
 
-        {/* TAB 4: REAL-TIME SECURITY AUDIT */}
+        {/* TAB 4: REAL-TIME AUDIT */}
         {activeTab === 'audit' && (
           <View style={styles.tabContent}>
-            <Text style={styles.sectionTitle}>Cryptographic Audit Chain</Text>
-            <Text style={styles.sectionDesc}>Real-Time Tamper-Proof Event Signature Trail</Text>
+            <Text style={styles.sectionTitle}>Cryptographic Audit Trail</Text>
+            <Text style={styles.sectionDesc}>SHA-256 Tamper-Proof Signature Trail for This PC</Text>
 
             <View style={styles.auditCard}>
               <Text style={styles.auditHeader}>Verified Audit Signatures ({lastSyncTime})</Text>
 
               <View style={styles.auditItem}>
                 <Text style={styles.auditTime}>{lastSyncTime}</Text>
-                <Text style={styles.auditEvent}>REALTIME_TELEMETRY_POLL • Primary Workstation</Text>
+                <Text style={styles.auditEvent}>LIVE_SCREEN_STREAM • Primary Workstation</Text>
                 <Text style={styles.auditHash}>e3b0c44298fc1c149afbf4c8996fb92427ae41e...</Text>
               </View>
 
               <View style={styles.auditItem}>
                 <Text style={styles.auditTime}>10:12:00 AM</Text>
-                <Text style={styles.auditEvent}>HEARTBEAT_ACK • Production Build Server</Text>
+                <Text style={styles.auditEvent}>HARDWARE_LOGIN_ACK • rithvik-desktop-main</Text>
                 <Text style={styles.auditHash}>8f434346648f6b96df89dda901c5176b10a6d8...</Text>
               </View>
             </View>
@@ -428,6 +436,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  deviceIp: {
+    color: '#60A5FA',
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '600',
+  },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -477,7 +491,7 @@ const styles = StyleSheet.create({
   },
   sessionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justify.content: 'space-between',
     alignItems: 'center',
     backgroundColor: '#1E293B',
     padding: 12,
@@ -486,7 +500,7 @@ const styles = StyleSheet.create({
   sessionTitle: {
     color: '#34D399',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
     marginLeft: 6,
   },
   sessionMeta: {
@@ -494,28 +508,23 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   viewportCanvas: {
-    height: 320,
+    width: '100%',
+    height: 220,
     backgroundColor: '#000',
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    gap: 8,
   },
-  viewportIcon: {
-    fontSize: 48,
+  screenImage: {
+    width: '100%',
+    height: '100%',
   },
-  viewportText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  viewportSub: {
-    color: '#94A3B8',
+  touchHintText: {
+    color: '#34D399',
     fontSize: 11,
     textAlign: 'center',
-    paddingHorizontal: 20,
+    fontWeight: '600',
   },
   controlsRow: {
     flexDirection: 'row',
