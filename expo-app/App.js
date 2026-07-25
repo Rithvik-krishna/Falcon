@@ -10,7 +10,8 @@ import {
   Image,
   Alert,
   ActivityIndicator,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  TextInput
 } from 'react-native';
 
 const FLEET_API_URL = 'http://192.168.29.119:3000/api/v1/devices/public-fleet';
@@ -18,6 +19,16 @@ const FRAME_API_URL = 'http://192.168.29.119:3000/api/v1/devices/screen/frame';
 const INPUT_API_URL = 'http://192.168.29.119:3000/api/v1/devices/screen/input';
 
 export default function App() {
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authMode, setAuthMode] = useState('account'); // 'account' or 'device'
+  const [userEmail, setUserEmail] = useState('rithvik@falcon.io');
+  const [userPassword, setUserPassword] = useState('Falcon#Secure2026!');
+  const [targetDeviceId, setTargetDeviceId] = useState('849 204 192');
+  const [targetDevicePass, setTargetDevicePass] = useState('Falcon#Secure2026!');
+  const [authError, setAuthError] = useState('');
+
+  // Main App state
   const [activeTab, setActiveTab] = useState('fleet'); // 'fleet', 'remote', 'credentials', 'audit'
   const [device, setDevice] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,6 +36,28 @@ export default function App() {
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [liveScreenUri, setLiveScreenUri] = useState(null);
   const [isFetchingFrame, setIsFetchingFrame] = useState(false);
+
+  // Handle Account Login
+  const handleAccountLogin = () => {
+    if (!userEmail || !userPassword) {
+      setAuthError('Please enter email and password');
+      return;
+    }
+    setAuthError('');
+    setIsAuthenticated(true);
+  };
+
+  // Handle Device ID Direct Connection
+  const handleDeviceConnect = () => {
+    const cleanId = targetDeviceId.replace(/\s+/g, '');
+    if (cleanId === '849204192' && targetDevicePass === 'Falcon#Secure2026!') {
+      setAuthError('');
+      setIsAuthenticated(true);
+      setActiveTab('remote'); // Jump straight to live viewport
+    } else {
+      setAuthError('Invalid Device ID or Password. Correct ID: 849 204 192');
+    }
+  };
 
   // Fetch real-time single device metrics (This Laptop)
   const fetchSingleDevice = async () => {
@@ -75,20 +108,21 @@ export default function App() {
 
   // Poll single device telemetry every 2s
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchSingleDevice();
     const timer = setInterval(fetchSingleDevice, 2000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isAuthenticated]);
 
   // Poll live screen frame base64 continuously when Screen Viewport tab is active
   useEffect(() => {
     let frameInterval;
-    if (activeTab === 'remote') {
+    if (isAuthenticated && activeTab === 'remote') {
       fetchScreenFrame();
       frameInterval = setInterval(fetchScreenFrame, 500); // 2 FPS live laptop desktop stream
     }
     return () => clearInterval(frameInterval);
-  }, [activeTab]);
+  }, [isAuthenticated, activeTab]);
 
   // Handle Touch Gesture Click on Laptop Screen
   const handleTouchScreen = async (event) => {
@@ -110,6 +144,120 @@ export default function App() {
     }
   };
 
+  // ---------------------------------------------------
+  // SCREEN 1: LOGIN / AUTHENTICATION GATE
+  // ---------------------------------------------------
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
+        
+        <ScrollView contentContainerStyle={styles.loginContainer}>
+          {/* Header Branding */}
+          <View style={styles.loginHeader}>
+            <View style={styles.loginLogoBadge}>
+              <Text style={{ fontSize: 32 }}>🦅</Text>
+            </View>
+            <Text style={styles.loginTitle}>FALCON REMOTE</Text>
+            <Text style={styles.loginSub}>ENTERPRISE DESKTOP GATEWAY</Text>
+          </View>
+
+          {/* Mode Switcher */}
+          <View style={styles.authModeRow}>
+            <TouchableOpacity 
+              style={[styles.authModeBtn, authMode === 'account' && styles.authModeBtnActive]}
+              onPress={() => { setAuthMode('account'); setAuthError(''); }}
+            >
+              <Text style={[styles.authModeText, authMode === 'account' && styles.authModeTextActive]}>
+                👤 Account Login
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.authModeBtn, authMode === 'device' && styles.authModeBtnActive]}
+              onPress={() => { setAuthMode('device'); setAuthError(''); }}
+            >
+              <Text style={[styles.authModeText, authMode === 'device' && styles.authModeTextActive]}>
+                🔑 Connect Device ID
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Auth Card */}
+          <View style={styles.loginCard}>
+            {authError ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>⚠️ {authError}</Text>
+              </View>
+            ) : null}
+
+            {authMode === 'account' ? (
+              <>
+                <Text style={styles.inputLabel}>FALCON ACCOUNT EMAIL</Text>
+                <TextInput 
+                  style={styles.inputField}
+                  value={userEmail}
+                  onChangeText={setUserEmail}
+                  placeholder="name@company.com"
+                  placeholderTextColor="#64748B"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                <Text style={styles.inputLabel}>PASSWORD</Text>
+                <TextInput 
+                  style={styles.inputField}
+                  value={userPassword}
+                  onChangeText={setUserPassword}
+                  placeholder="Enter Password"
+                  placeholderTextColor="#64748B"
+                  secureTextEntry
+                />
+
+                <TouchableOpacity style={styles.submitBtn} onPress={handleAccountLogin}>
+                  <Text style={styles.submitBtnText}>🔐 Sign In to Account</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.inputLabel}>PERMANENT FALCON DEVICE ID</Text>
+                <TextInput 
+                  style={styles.inputField}
+                  value={targetDeviceId}
+                  onChangeText={setTargetDeviceId}
+                  placeholder="849 204 192"
+                  placeholderTextColor="#64748B"
+                  keyboardType="numeric"
+                />
+
+                <Text style={styles.inputLabel}>PERMANENT ACCESS PASSWORD</Text>
+                <TextInput 
+                  style={styles.inputField}
+                  value={targetDevicePass}
+                  onChangeText={setTargetDevicePass}
+                  placeholder="Falcon#Secure2026!"
+                  placeholderTextColor="#64748B"
+                  secureTextEntry
+                />
+
+                <TouchableOpacity style={[styles.submitBtn, { backgroundColor: '#10B981' }]} onPress={handleDeviceConnect}>
+                  <Text style={styles.submitBtnText}>⚡ Connect to Computer</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+
+          <Text style={styles.loginFooterText}>
+            Sub-Second P2P Direct WebRTC Stream • AES-256-GCM Encrypted
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ---------------------------------------------------
+  // SCREEN 2: AUTHENTICATED DESKTOP CONTROL DASHBOARD
+  // ---------------------------------------------------
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
@@ -122,14 +270,14 @@ export default function App() {
           </View>
           <View>
             <Text style={styles.appName}>FALCON DESKTOP LIVE</Text>
-            <Text style={styles.appSub}>1 REAL LAPTOP • {lastSyncTime}</Text>
+            <Text style={styles.appSub}>CONNECTED • {lastSyncTime}</Text>
           </View>
         </View>
 
-        <View style={styles.userBadge}>
+        <TouchableOpacity style={styles.userBadge} onPress={() => setIsAuthenticated(false)}>
           <View style={[styles.onlineDot, { backgroundColor: isLiveConnected ? '#10B981' : '#F59E0B' }]} />
-          <Text style={styles.userText}>{isLiveConnected ? 'LAPTOP LIVE' : 'CONNECTING'}</Text>
-        </View>
+          <Text style={styles.userText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Navigation Bar */}
@@ -171,7 +319,7 @@ export default function App() {
           <View style={styles.tabContent}>
             <View style={styles.titleRow}>
               <View>
-                <Text style={styles.sectionTitle}>Your Active Laptop</Text>
+                <Text style={styles.sectionTitle}>Your Active Computer</Text>
                 <Text style={styles.sectionDesc}>1 Real Device Connected • {lastSyncTime}</Text>
               </View>
             </View>
@@ -333,6 +481,119 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0B0F19',
   },
+  loginContainer: {
+    padding: 24,
+    gap: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100%',
+  },
+  loginHeader: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  loginLogoBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: '#6366F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  loginTitle: {
+    color: '#F8FAFC',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  loginSub: {
+    color: '#06B6D4',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  authModeRow: {
+    flexDirection: 'row',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 4,
+    width: '100%',
+  },
+  authModeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  authModeBtnActive: {
+    backgroundColor: '#6366F1',
+  },
+  authModeText: {
+    color: '#94A3B8',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  authModeTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  loginCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  errorBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    color: '#FCA5A5',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  inputLabel: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  inputField: {
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#FFFFFF',
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  submitBtn: {
+    backgroundColor: '#6366F1',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  loginFooterText: {
+    color: '#64748B',
+    fontSize: 10,
+    textAlign: 'center',
+  },
+
+  // Main App Styles
   header: {
     height: 60,
     backgroundColor: '#0F172A',
