@@ -12,16 +12,18 @@ import {
   ActivityIndicator,
   TouchableWithoutFeedback,
   TextInput,
-  Dimensions
+  Dimensions,
+  Modal
 } from 'react-native';
 
-const { width } = Dimensions.get('window');
-const CANVAS_WIDTH = width - 32;
-const CANVAS_HEIGHT = Math.round(CANVAS_WIDTH * (9 / 16));
+const { width, height } = Dimensions.get('window');
+const NORMAL_WIDTH = width - 32;
+const NORMAL_HEIGHT = Math.round(NORMAL_WIDTH * (9 / 16));
 
 const FLEET_API_URL = 'http://192.168.29.119:3000/api/v1/devices/public-fleet';
 const FRAME_API_URL = 'http://192.168.29.119:3000/api/v1/devices/screen/frame';
 const INPUT_API_URL = 'http://192.168.29.119:3000/api/v1/devices/screen/input';
+const KEY_API_URL = 'http://192.168.29.119:3000/api/v1/devices/screen/keyboard';
 
 export default function App() {
   // Auth state
@@ -41,6 +43,11 @@ export default function App() {
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [liveScreenUri, setLiveScreenUri] = useState(null);
   const [frameCount, setFrameCount] = useState(0);
+
+  // Full Screen & Keyboard Control States
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isKeyboardLocked, setIsKeyboardLocked] = useState(true);
+  const [typedText, setTypedText] = useState('');
 
   // Handle Account Login
   const handleAccountLogin = () => {
@@ -94,18 +101,17 @@ export default function App() {
     }
   };
 
-  // Poll live screen frame base64
+  // Fast low-latency screen frame polling
   const fetchScreenFrame = async () => {
     try {
       const res = await fetch(FRAME_API_URL);
       const data = await res.json();
       if (data && data.base64) {
-        const cleanBase64 = data.base64.replace(/(\r\n|\n|\r)/gm, "");
-        setLiveScreenUri(cleanBase64);
+        setLiveScreenUri(data.base64);
         setFrameCount(c => c + 1);
       }
     } catch (e) {
-      // Frame fetch error
+      // Frame fetch catch
     }
   };
 
@@ -117,12 +123,12 @@ export default function App() {
     return () => clearInterval(timer);
   }, [isAuthenticated]);
 
-  // Poll live screen frame base64 continuously when Screen Viewport tab is active
+  // Ultra-fast 200ms screen frame polling loop when Screen Viewport tab is active
   useEffect(() => {
     let frameInterval;
     if (isAuthenticated && activeTab === 'remote') {
       fetchScreenFrame();
-      frameInterval = setInterval(fetchScreenFrame, 500); // 2 FPS live laptop desktop stream
+      frameInterval = setInterval(fetchScreenFrame, 200); // 5 FPS smooth live laptop desktop stream
     }
     return () => clearInterval(frameInterval);
   }, [isAuthenticated, activeTab]);
@@ -130,8 +136,11 @@ export default function App() {
   // Handle Touch Gesture Click on Laptop Screen
   const handleTouchScreen = async (event) => {
     const { locationX, locationY } = event.nativeEvent;
-    const normX = Math.max(0, Math.min(1, locationX / CANVAS_WIDTH));
-    const normY = Math.max(0, Math.min(1, locationY / CANVAS_HEIGHT));
+    const currentWidth = isFullscreen ? width : NORMAL_WIDTH;
+    const currentHeight = isFullscreen ? height : NORMAL_HEIGHT;
+
+    const normX = Math.max(0, Math.min(1, locationX / currentWidth));
+    const normY = Math.max(0, Math.min(1, locationY / currentHeight));
 
     try {
       await fetch(INPUT_API_URL, {
@@ -139,10 +148,36 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ normX, normY })
       });
-      // Immediately refresh screen after touch click
-      setTimeout(fetchScreenFrame, 250);
+      setTimeout(fetchScreenFrame, 100);
     } catch (e) {
       // Input catch
+    }
+  };
+
+  // Inject Keystroke into Laptop
+  const sendKey = async (keyStr) => {
+    if (isKeyboardLocked) {
+      Alert.alert('Keyboard Locked', 'Unlock the keyboard using the 🔒 Lock/Unlock button to send keystrokes.');
+      return;
+    }
+
+    try {
+      await fetch(KEY_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: keyStr })
+      });
+      setTimeout(fetchScreenFrame, 100);
+    } catch (e) {
+      // Key catch
+    }
+  };
+
+  // Send Typed Text
+  const handleSendText = () => {
+    if (typedText) {
+      sendKey(typedText);
+      setTypedText('');
     }
   };
 
@@ -254,6 +289,53 @@ export default function App() {
           </Text>
         </ScrollView>
       </SafeAreaView>
+    );
+  }
+
+  // ---------------------------------------------------
+  // FULL SCREEN VIEWPORT MODAL OVERLAY
+  // ---------------------------------------------------
+  if (isFullscreen && activeTab === 'remote') {
+    return (
+      <View style={styles.fullScreenContainer}>
+        <StatusBar hidden />
+        <TouchableWithoutFeedback onPress={handleTouchScreen}>
+          <View style={{ width: width, height: height, backgroundColor: '#000' }}>
+            {liveScreenUri ? (
+              <Image 
+                key={frameCount}
+                source={{ uri: `${liveScreenUri}#${frameCount}` }}
+                style={{ width: width, height: height }}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#6366F1" />
+                <Text style={styles.loadingText}>Stream Buffering...</Text>
+              </View>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+
+        {/* Floating Toolbar in Fullscreen */}
+        <View style={styles.fullScreenOverlayBar}>
+          <TouchableOpacity 
+            style={[styles.fullScreenBtn, { backgroundColor: '#EF4444' }]} 
+            onPress={() => setIsFullscreen(false)}
+          >
+            <Text style={styles.fullScreenBtnText}>✕ Exit Fullscreen</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.fullScreenBtn, { backgroundColor: isKeyboardLocked ? '#334155' : '#10B981' }]} 
+            onPress={() => setIsKeyboardLocked(!isKeyboardLocked)}
+          >
+            <Text style={styles.fullScreenBtnText}>
+              {isKeyboardLocked ? '🔒 Keyboard Locked' : '🔓 Keyboard Unlocked'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   }
 
@@ -375,7 +457,7 @@ export default function App() {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={styles.onlineDot} />
                 <Text style={styles.sessionTitle}>
-                  Primary Workstation (Rithvik's Laptop Screen)
+                  Primary Workstation (Laptop Screen)
                 </Text>
               </View>
               <Text style={styles.sessionMeta}>Frames Received: {frameCount}</Text>
@@ -383,12 +465,12 @@ export default function App() {
 
             {/* Interactive Screen Capture Image Canvas */}
             <TouchableWithoutFeedback onPress={handleTouchScreen}>
-              <View style={[styles.viewportCanvas, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }]}>
+              <View style={[styles.viewportCanvas, { width: NORMAL_WIDTH, height: NORMAL_HEIGHT }]}>
                 {liveScreenUri ? (
                   <Image 
                     key={frameCount}
                     source={{ uri: `${liveScreenUri}#${frameCount}` }}
-                    style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
+                    style={{ width: NORMAL_WIDTH, height: NORMAL_HEIGHT }}
                     resizeMode="contain"
                   />
                 ) : (
@@ -400,25 +482,73 @@ export default function App() {
               </View>
             </TouchableWithoutFeedback>
 
-            {/* Touch Hint */}
-            <Text style={styles.touchHintText}>
-              👆 Tap anywhere on the laptop screen image to click on your computer!
-            </Text>
-
-            {/* Controls Bar */}
-            <View style={styles.controlsRow}>
-              <TouchableOpacity style={styles.controlBtn} onPress={fetchScreenFrame}>
-                <Text style={styles.controlBtnText}>🔄 Refresh Screen</Text>
+            {/* Control Bar: Fullscreen & Keyboard Lock/Unlock */}
+            <View style={styles.toolbarRow}>
+              <TouchableOpacity 
+                style={[styles.toolBtn, { backgroundColor: '#6366F1' }]} 
+                onPress={() => setIsFullscreen(true)}
+              >
+                <Text style={styles.toolBtnText}>⛶ Fullscreen</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.controlBtn} onPress={() => Alert.alert('Touch Controls', 'Tap on screen image to trigger Win32 click on laptop.')}>
-                <Text style={styles.controlBtnText}>👆 Click Injector</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.controlBtn, { backgroundColor: '#EF4444' }]} onPress={() => setActiveTab('fleet')}>
-                <Text style={[styles.controlBtnText, { color: '#FFF' }]}>🔴 Back</Text>
+              <TouchableOpacity 
+                style={[styles.toolBtn, { backgroundColor: isKeyboardLocked ? '#334155' : '#10B981' }]} 
+                onPress={() => setIsKeyboardLocked(!isKeyboardLocked)}
+              >
+                <Text style={styles.toolBtnText}>
+                  {isKeyboardLocked ? '🔒 Keyboard Locked' : '🔓 Keyboard Unlocked'}
+                </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Virtual Remote Keyboard Hotkey Bar */}
+            <View style={styles.keyboardPanel}>
+              <Text style={styles.keyboardHeader}>
+                {isKeyboardLocked ? '🔒 KEYBOARD IS LOCKED (Unlock to Type)' : '🔓 VIRTUAL REMOTE KEYBOARD ACTIVE'}
+              </Text>
+              
+              <View style={styles.keyRow}>
+                <TouchableOpacity style={styles.keyCap} onPress={() => sendKey('{ESC}')} disabled={isKeyboardLocked}>
+                  <Text style={styles.keyCapText}>Esc</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.keyCap} onPress={() => sendKey('{TAB}')} disabled={isKeyboardLocked}>
+                  <Text style={styles.keyCapText}>Tab</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.keyCap} onPress={() => sendKey('^c')} disabled={isKeyboardLocked}>
+                  <Text style={styles.keyCapText}>Ctrl+C</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.keyCap} onPress={() => sendKey('^v')} disabled={isKeyboardLocked}>
+                  <Text style={styles.keyCapText}>Ctrl+V</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.keyCap, { backgroundColor: '#EF4444' }]} onPress={() => sendKey('{BACKSPACE}')} disabled={isKeyboardLocked}>
+                  <Text style={styles.keyCapText}>⌫ Back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.keyCap, { backgroundColor: '#10B981' }]} onPress={() => sendKey('{ENTER}')} disabled={isKeyboardLocked}>
+                  <Text style={styles.keyCapText}>↵ Enter</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Text Typing Injector Input */}
+              <View style={styles.typeInputRow}>
+                <TextInput 
+                  style={[styles.typeInput, isKeyboardLocked && { opacity: 0.5 }]}
+                  value={typedText}
+                  onChangeText={setTypedText}
+                  placeholder={isKeyboardLocked ? "Unlock keyboard to type..." : "Type text to send to laptop..."}
+                  placeholderTextColor="#64748B"
+                  editable={!isKeyboardLocked}
+                  onSubmitEditing={handleSendText}
+                />
+                <TouchableOpacity 
+                  style={[styles.sendTextBtn, isKeyboardLocked && { opacity: 0.5 }]} 
+                  onPress={handleSendText}
+                  disabled={isKeyboardLocked}
+                >
+                  <Text style={styles.sendTextBtnText}>Send</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
           </View>
         )}
 
@@ -483,6 +613,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0B0F19',
+  },
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  fullScreenOverlayBar: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  fullScreenBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  fullScreenBtnText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 12,
   },
   loginContainer: {
     padding: 24,
@@ -684,7 +835,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   tabContent: {
-    gap: 16,
+    gap: 14,
   },
   titleRow: {
     flexDirection: 'row',
@@ -814,26 +965,76 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  touchHintText: {
-    color: '#34D399',
-    fontSize: 11,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  controlsRow: {
+  toolbarRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  controlBtn: {
+  toolBtn: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  controlBtnText: {
-    color: '#F8FAFC',
-    fontWeight: '600',
+  toolBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  keyboardPanel: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  keyboardHeader: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  keyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  keyCap: {
+    backgroundColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  keyCapText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 11,
+  },
+  typeInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  typeInput: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#FFFFFF',
+    fontSize: 13,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  sendTextBtn: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendTextBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
     fontSize: 12,
   },
   credCard: {

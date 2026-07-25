@@ -13,6 +13,7 @@ const utilsDir = fs.existsSync(path.join(process.cwd(), 'backend', 'src', 'utils
 
 const capExePath = path.join(utilsDir, 'ScreenCap.exe');
 const clickExePath = path.join(utilsDir, 'Clicker.exe');
+const keyExePath = path.join(utilsDir, 'KeyInject.exe');
 const screenImgPath = path.join(utilsDir, 'screen.jpg');
 
 let cachedBase64Frame = '';
@@ -20,7 +21,7 @@ let isCapturing = false;
 let lastMobileAccessTime = 0;
 let lastMobileIp = '192.168.29.220';
 
-// Fast native background screen capturer (10ms execution)
+// Ultra-fast 10ms native screen capturer
 async function updateScreenCache() {
   if (isCapturing) return;
   try {
@@ -31,14 +32,14 @@ async function updateScreenCache() {
       cachedBase64Frame = `data:image/jpeg;base64,${imgBuffer.toString('base64')}`;
     }
   } catch (e: any) {
-    console.error('Screen capture error:', e.message);
+    // Capture catch
   } finally {
     isCapturing = false;
   }
 }
 
-// Continuous 200ms native background desktop capture
-setInterval(updateScreenCache, 200);
+// Continuous 150ms native background desktop capture for zero lag
+setInterval(updateScreenCache, 150);
 updateScreenCache();
 
 export async function deviceRoutes(fastify: FastifyInstance) {
@@ -98,14 +99,29 @@ export async function deviceRoutes(fastify: FastifyInstance) {
       const targetY = Math.round((normY || 0.5) * 1080);
 
       await execAsync(`"${clickExePath}" ${targetX} ${targetY}`);
-      setTimeout(updateScreenCache, 50);
+      setTimeout(updateScreenCache, 40);
       return reply.send({ success: true, clickedX: targetX, clickedY: targetY });
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
   });
 
-  // 4. Session Status Endpoint for Desktop Client Notification
+  // 4. Remote Keyboard Keystroke Injector Endpoint
+  fastify.post('/screen/keyboard', async (request, reply) => {
+    try {
+      lastMobileAccessTime = Date.now();
+      const { key } = request.body as { key: string };
+      if (key) {
+        await execAsync(`"${keyExePath}" "${key}"`);
+        setTimeout(updateScreenCache, 40);
+      }
+      return reply.send({ success: true, injectedKey: key });
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
+  });
+
+  // 5. Session Status Endpoint for Desktop Client Notification
   fastify.get('/session-status', async (request, reply) => {
     const isMobileActive = (Date.now() - lastMobileAccessTime) < 4000;
     return reply.send({
