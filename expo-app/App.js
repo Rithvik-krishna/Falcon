@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#6366F1',
     alignItems: 'center',
-    justify.content: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
   loginTitle: {
