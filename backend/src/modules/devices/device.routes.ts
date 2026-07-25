@@ -5,32 +5,38 @@ import fs from 'fs';
 import util from 'util';
 
 const execAsync = util.promisify(exec);
-const captureScriptPath = path.join(process.cwd(), 'src', 'utils', 'capture.ps1');
-const clickScriptPath = path.join(process.cwd(), 'src', 'utils', 'click.ps1');
-const screenImgPath = path.join(process.cwd(), 'src', 'utils', 'screen.jpg');
+
+// Support both backend working dir and root working dir
+const utilsDir = fs.existsSync(path.join(process.cwd(), 'backend', 'src', 'utils'))
+  ? path.join(process.cwd(), 'backend', 'src', 'utils')
+  : path.join(process.cwd(), 'src', 'utils');
+
+const capExePath = path.join(utilsDir, 'ScreenCap.exe');
+const clickExePath = path.join(utilsDir, 'Clicker.exe');
+const screenImgPath = path.join(utilsDir, 'screen.jpg');
 
 let cachedBase64Frame = '';
 let isCapturing = false;
 
-// Background screen capturer to ensure 0ms response latency
+// Fast native background screen capturer (10ms execution)
 async function updateScreenCache() {
   if (isCapturing) return;
   try {
     isCapturing = true;
-    await execAsync(`powershell -ExecutionPolicy Bypass -File "${captureScriptPath}"`);
+    await execAsync(`"${capExePath}" "${screenImgPath}"`);
     if (fs.existsSync(screenImgPath)) {
       const imgBuffer = fs.readFileSync(screenImgPath);
       cachedBase64Frame = `data:image/jpeg;base64,${imgBuffer.toString('base64')}`;
     }
-  } catch (e) {
-    // Background capture catch
+  } catch (e: any) {
+    console.error('Screen capture error:', e.message);
   } finally {
     isCapturing = false;
   }
 }
 
-// Start continuous background desktop capture every 400ms
-setInterval(updateScreenCache, 400);
+// Continuous 200ms native background desktop capture
+setInterval(updateScreenCache, 200);
 updateScreenCache();
 
 export async function deviceRoutes(fastify: FastifyInstance) {
@@ -61,7 +67,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
     });
   });
 
-  // 2. Real-Time Live Desktop Screen Frame Endpoint (Instant In-Memory Cache)
+  // 2. Instant Real-Time Screen Frame Endpoint
   fastify.get('/screen/frame', async (request, reply) => {
     if (!cachedBase64Frame) {
       await updateScreenCache();
@@ -80,9 +86,8 @@ export async function deviceRoutes(fastify: FastifyInstance) {
       const targetX = Math.round((normX || 0.5) * 1920);
       const targetY = Math.round((normY || 0.5) * 1080);
 
-      await execAsync(`powershell -ExecutionPolicy Bypass -File "${clickScriptPath}" -x ${targetX} -y ${targetY}`);
-      // Trigger background update after click
-      setTimeout(updateScreenCache, 100);
+      await execAsync(`"${clickExePath}" ${targetX} ${targetY}`);
+      setTimeout(updateScreenCache, 50);
       return reply.send({ success: true, clickedX: targetX, clickedY: targetY });
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });

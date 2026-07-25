@@ -386,9 +386,10 @@ export default function App() {
               <View style={[styles.viewportCanvas, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }]}>
                 {liveScreenUri ? (
                   <Image 
-                    source={{ uri: liveScreenUri }}
+                    key={frameCount}
+                    source={{ uri: `${liveScreenUri}#${frameCount}` }}
                     style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
-                    resizeMode="cover"
+                    resizeMode="contain"
                   />
                 ) : (
                   <View style={styles.loadingContainer}>
